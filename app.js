@@ -2,8 +2,8 @@
 let boqData = [
     // Category A: Cameras
     { cat: 'A', catTitle: 'Cameras and accessories', isCat: true },
-    { id: 1, type: 'cam', subtype: 'dome', cat: 'A', desc: 'Dome Camera - 2MP WDR LightHunter IR Network Dome Camera', brand: 'UNV', model: 'IPC3232SB- AHDZK-PI-I0', uom: 'EA', qty: 4, cost: 371, isService: false },
-    { id: 2, type: 'cam', subtype: 'bullet', cat: 'A', desc: 'Bullet Camera - 2MP HD IR VF Bullet Network Camera', brand: 'UNV', model: 'IPC2322LB- ADZK-G', uom: 'EA', qty: 15, cost: 422, isService: false },
+    { id: 1, type: 'cam', subtype: 'dome', cat: 'A', desc: 'Dome Camera - 2MP WDR LightHunter IR Network Dome Camera', brand: 'UNV', model: 'IPC3232SB- AHDZK-PI-I0', uom: 'EA', qty: 0, cost: 371, isService: false },
+    { id: 2, type: 'cam', subtype: 'bullet', cat: 'A', desc: 'Bullet Camera - 2MP HD IR VF Bullet Network Camera', brand: 'UNV', model: 'IPC2322LB- ADZK-G', uom: 'EA', qty: 0, cost: 422, isService: false },
     
     // Category B: Headend
     { cat: 'B', catTitle: 'VMS, NVR & Storage', isCat: true },
@@ -45,14 +45,14 @@ let boqData = [
 ];
 
 /**
- * Extract Raw Text from Word Doc and Parse Quantities into App State
+ * Handle Word Document (.docx) File Selection
  */
 function handleWordUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     if (typeof mammoth === 'undefined') {
-        alert("Mammoth library is not loaded. Please ensure CDN scripts are accessible.");
+        alert("Mammoth library is not loaded. Please check your internet connection.");
         return;
     }
 
@@ -63,57 +63,60 @@ function handleWordUpload(event) {
             .then(function(result) {
                 const text = result.value;
                 parseSurveyText(text);
-                event.target.value = ''; // Reset input
+                event.target.value = ''; // Reset input element
             })
             .catch(function(err) {
-                console.error("Error parsing Word document:", err);
-                alert("Failed to parse Word file. Make sure it is a valid .docx document.");
+                console.error("Error reading Word file:", err);
+                alert("Failed to read the Word file.");
             });
     };
     reader.readAsArrayBuffer(file);
 }
 
 /**
- * Scan Word document text for quantities and auto-update state
+ * Dynamic Parser to Extract Quantities from Extracted Text
  */
-function parseSurveyText(text) {
-    let matchFound = false;
+function parseSurveyText(rawText) {
+    // Normalize string spaces and line breaks
+    const text = rawText.replace(/\t/g, ' ').replace(/\r\n/g, '\n');
 
-    // Detect Dome Cameras (e.g., "Dome Camera: 8" or "8 Dome")
-    const domeMatch = text.match(/Dome(?:\s+Camera)?s?\s*[:=|-]?\s*(\d+)/i) || text.match(/(\d+)\s*x?\s*Dome/i);
+    let extractedDome = 0;
+    let extractedBullet = 0;
+    let extractedConduit = 0;
+
+    // Pattern matching strategies for Dome
+    const domeMatch = text.match(/dome[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*x?\s*dome/i);
     if (domeMatch) {
-        const domeItem = boqData.find(i => i.subtype === 'dome');
-        if (domeItem) {
-            domeItem.qty = parseInt(domeMatch[1], 10);
-            matchFound = true;
-        }
+        extractedDome = parseInt(domeMatch[1], 10);
     }
 
-    // Detect Bullet Cameras (e.g., "Bullet Camera: 12" or "12 Bullet")
-    const bulletMatch = text.match(/Bullet(?:\s+Camera)?s?\s*[:=|-]?\s*(\d+)/i) || text.match(/(\d+)\s*x?\s*Bullet/i);
+    // Pattern matching strategies for Bullet
+    const bulletMatch = text.match(/bullet[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*x?\s*bullet/i);
     if (bulletMatch) {
-        const bulletItem = boqData.find(i => i.subtype === 'bullet');
-        if (bulletItem) {
-            bulletItem.qty = parseInt(bulletMatch[1], 10);
-            matchFound = true;
-        }
+        extractedBullet = parseInt(bulletMatch[1], 10);
     }
 
-    // Detect Conduit Meters (e.g., "Conduit: 150m" or "Conduit Length - 200")
-    const conduitMatch = text.match(/Conduit(?:s|\s+Length)?\s*[:=|-]?\s*(\d+)/i);
+    // Pattern matching strategies for Conduit
+    const conduitMatch = text.match(/conduit[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*m(?:eter)?s?\s*conduit/i);
     if (conduitMatch) {
-        document.getElementById('conduitMeters').value = parseInt(conduitMatch[1], 10);
-        matchFound = true;
+        extractedConduit = parseInt(conduitMatch[1], 10);
     }
 
-    // Recalculate Totals & Re-render UI Table
+    // Update state variables
+    const domeItem = boqData.find(i => i.subtype === 'dome');
+    if (domeItem) domeItem.qty = extractedDome;
+
+    const bulletItem = boqData.find(i => i.subtype === 'bullet');
+    if (bulletItem) bulletItem.qty = extractedBullet;
+
+    if (extractedConduit > 0) {
+        document.getElementById('conduitMeters').value = extractedConduit;
+    }
+
+    // Refresh BOQ table with imported numbers
     calculateBOQ();
 
-    if (matchFound) {
-        alert("Survey data extracted successfully! BOQ updated.");
-    } else {
-        alert("Survey file read, but no matching camera/conduit patterns were found. Please verify document formatting.");
-    }
+    alert(`Survey Extracted Successfully:\n- Dome Cameras: ${extractedDome}\n- Bullet Cameras: ${extractedBullet}\n- Conduit Length: ${extractedConduit} Mtr`);
 }
 
 /**
@@ -124,7 +127,7 @@ function calculateBOQ() {
     const srvMarkup = parseFloat(document.getElementById('srvMarkup').value) / 100 || 0;
     const conduitMeters = parseFloat(document.getElementById('conduitMeters').value) || 0;
 
-    // 1. Calculate Total Cameras
+    // 1. Calculate Total Cameras directly from state array
     let totalCams = 0;
     boqData.forEach(item => {
         if (item.type === 'cam') {
@@ -258,7 +261,10 @@ function exportToExcel() {
     boqRows.push([], ["", "", "", "", "", "", "Total Cost", `=SUM(I8:I${rowIdx-1})`, "Total Sales", `=SUM(K8:K${rowIdx-1})`]);
     const wsBOQ = XLSX.utils.aoa_to_sheet(boqRows);
 
-    const totalCams = boqData.filter(i => i.type === 'cam').reduce((a, b) => a + b.qty, 0);
+    const domeQty = boqData.find(i => i.subtype === 'dome')?.qty || 0;
+    const bulletQty = boqData.find(i => i.subtype === 'bullet')?.qty || 0;
+    const totalCams = domeQty + bulletQty;
+
     const breakdownRows = [
         [],
         ["BREAK DOWN DETAILS DO NOT ATTACHED WITH THE FINAL QUOTATION"],
@@ -299,10 +305,10 @@ function exportToExcel() {
     const qtyRows = [
         [],
         ["", "", "Dome", "Bullet", "Pole", "PTZ", "K-POI", "Pole", "Total Camera"],
-        ["", "Site Plan", 4, 15, 0, 0, 0, 0, "=SUM(C3:H3)"],
+        ["", "Site Plan", domeQty, bulletQty, 0, 0, 0, 0, "=SUM(C3:H3)"],
         [],
         [],
-        ["", "", 4, 15, 0, 0, 0, 0, "=C3+D3"]
+        ["", "", domeQty, bulletQty, 0, 0, 0, 0, "=C3+D3"]
     ];
     const wsQTY = XLSX.utils.aoa_to_sheet(qtyRows);
 
