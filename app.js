@@ -45,78 +45,112 @@ let boqData = [
 ];
 
 /**
- * Handle Word Document (.docx) File Selection
+ * Handle Word Document Upload via HTML Conversion
  */
 function handleWordUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     if (typeof mammoth === 'undefined') {
-        alert("Mammoth library is not loaded. Please check your internet connection.");
+        alert("Mammoth library is not loaded. Check script imports.");
         return;
     }
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const arrayBuffer = e.target.result;
-        mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+        mammoth.convertToHtml({ arrayBuffer: arrayBuffer })
             .then(function(result) {
-                const text = result.value;
-                parseSurveyText(text);
-                event.target.value = ''; // Reset input element
+                const htmlContent = result.value;
+                parseWordHtml(htmlContent);
+                event.target.value = ''; // Reset input
             })
             .catch(function(err) {
-                console.error("Error reading Word file:", err);
-                alert("Failed to read the Word file.");
+                console.error("Error parsing Word document:", err);
+                alert("Failed to parse Word document.");
             });
     };
     reader.readAsArrayBuffer(file);
 }
 
 /**
- * Dynamic Parser to Extract Quantities from Extracted Text
+ * Robust HTML Document Parser (Scans Tables & Paragraphs)
  */
-function parseSurveyText(rawText) {
-    // Normalize string spaces and line breaks
-    const text = rawText.replace(/\t/g, ' ').replace(/\r\n/g, '\n');
+function parseWordHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
 
-    let extractedDome = 0;
-    let extractedBullet = 0;
-    let extractedConduit = 0;
+    let domeCount = 0;
+    let bulletCount = 0;
+    let conduitLength = 0;
 
-    // Pattern matching strategies for Dome
-    const domeMatch = text.match(/dome[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*x?\s*dome/i);
-    if (domeMatch) {
-        extractedDome = parseInt(domeMatch[1], 10);
+    // 1. Scan Word Tables
+    const rows = doc.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td, th')).map(c => c.textContent.trim().toLowerCase());
+        const rowText = cells.join(' ');
+
+        // Find numbers inside cell array
+        cells.forEach((cellText, idx) => {
+            if (cellText.includes('dome')) {
+                const num = findNumberInRow(cells, idx);
+                if (num > 0) domeCount = num;
+            }
+            if (cellText.includes('bullet')) {
+                const num = findNumberInRow(cells, idx);
+                if (num > 0) bulletCount = num;
+            }
+            if (cellText.includes('conduit')) {
+                const num = findNumberInRow(cells, idx);
+                if (num > 0) conduitLength = num;
+            }
+        });
+    });
+
+    // 2. Fallback: Scan full body text if table matching returned 0
+    const fullText = doc.body.textContent || '';
+    if (domeCount === 0) {
+        const dMatch = fullText.match(/dome[^\d]*(\d+)/i) || fullText.match(/(\d+)[^\d]*dome/i);
+        if (dMatch) domeCount = parseInt(dMatch[1], 10);
+    }
+    if (bulletCount === 0) {
+        const bMatch = fullText.match(/bullet[^\d]*(\d+)/i) || fullText.match(/(\d+)[^\d]*bullet/i);
+        if (bMatch) bulletCount = parseInt(bMatch[1], 10);
+    }
+    if (conduitLength === 0) {
+        const cMatch = fullText.match(/conduit[^\d]*(\d+)/i) || fullText.match(/(\d+)[^\d]*conduit/i);
+        if (cMatch) conduitLength = parseInt(cMatch[1], 10);
     }
 
-    // Pattern matching strategies for Bullet
-    const bulletMatch = text.match(/bullet[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*x?\s*bullet/i);
-    if (bulletMatch) {
-        extractedBullet = parseInt(bulletMatch[1], 10);
-    }
-
-    // Pattern matching strategies for Conduit
-    const conduitMatch = text.match(/conduit[^\n\d]*(\d+)/i) || text.match(/(\d+)\s*m(?:eter)?s?\s*conduit/i);
-    if (conduitMatch) {
-        extractedConduit = parseInt(conduitMatch[1], 10);
-    }
-
-    // Update state variables
+    // Update state data
     const domeItem = boqData.find(i => i.subtype === 'dome');
-    if (domeItem) domeItem.qty = extractedDome;
+    if (domeItem) domeItem.qty = domeCount;
 
     const bulletItem = boqData.find(i => i.subtype === 'bullet');
-    if (bulletItem) bulletItem.qty = extractedBullet;
+    if (bulletItem) bulletItem.qty = bulletCount;
 
-    if (extractedConduit > 0) {
-        document.getElementById('conduitMeters').value = extractedConduit;
+    if (conduitLength > 0) {
+        document.getElementById('conduitMeters').value = conduitLength;
     }
 
-    // Refresh BOQ table with imported numbers
+    // Trigger recalculation
     calculateBOQ();
 
-    alert(`Survey Extracted Successfully:\n- Dome Cameras: ${extractedDome}\n- Bullet Cameras: ${extractedBullet}\n- Conduit Length: ${extractedConduit} Mtr`);
+    alert(`Survey Parsed:\n- Dome Cameras: ${domeCount}\n- Bullet Cameras: ${bulletCount}\n- Conduit Length: ${conduitLength} Mtr`);
+}
+
+/**
+ * Helper to find numeric quantity in neighboring table cells
+ */
+function findNumberInRow(cells, keywordIdx) {
+    for (let i = 0; i < cells.length; i++) {
+        if (i === keywordIdx) continue;
+        const val = parseInt(cells[i].replace(/[^\d]/g, ''), 10);
+        if (!isNaN(val) && val > 0) {
+            return val;
+        }
+    }
+    return 0;
 }
 
 /**
@@ -127,7 +161,7 @@ function calculateBOQ() {
     const srvMarkup = parseFloat(document.getElementById('srvMarkup').value) / 100 || 0;
     const conduitMeters = parseFloat(document.getElementById('conduitMeters').value) || 0;
 
-    // 1. Calculate Total Cameras directly from state array
+    // 1. Calculate Total Cameras
     let totalCams = 0;
     boqData.forEach(item => {
         if (item.type === 'cam') {
