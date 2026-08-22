@@ -1,418 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCTV Automated Costing Sheet Generator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flora Security Systems - CCTV Costing Engine</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Mammoth.js for Word Parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- SheetJS for Excel Parsing and Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --accent: #3b82f6;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --border: #334155;
-    }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 24px;
-    }
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 24px;
-      color: var(--accent);
-    }
-    .upload-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .card {
-      background: var(--card);
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-    }
-    input[type="file"], select {
-      width: 100%;
-      padding: 10px;
-      background: #0f172a;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 6px;
-      box-sizing: border-box;
-    }
-    button {
-      width: 100%;
-      padding: 14px;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #2563eb;
-    }
-    .controls-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-    }
-    th, td {
-      padding: 12px;
-      border: 1px solid var(--border);
-      text-align: left;
-    }
-    th {
-      background: #0f172a;
-      color: var(--accent);
-    }
-    .total-row {
-      font-weight: bold;
-      background: #0f172a;
-    }
-    .summary-box {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 16px;
-    }
-    .stat-card {
-      background: #0f172a;
-      padding: 12px;
-      border-radius: 6px;
-      text-align: center;
-      border: 1px solid var(--border);
-    }
-    .stat-card span {
-      display: block;
-      font-size: 20px;
-      font-weight: bold;
-      color: var(--accent);
-    }
-  </style>
 </head>
-<body>
-
-<div class="container">
-  <h1>MOI-SSD CCTV Automated Costing Engine</h1>
-
-  <div class="upload-grid">
-    <div class="card">
-      <label>1. Upload Site Survey Report (.docx)</label>
-      <input type="file" id="docxInput" accept=".docx" />
-    </div>
-    <div class="card">
-      <label>2. Upload Price List (.xlsx)</label>
-      <input type="file" id="xlsxInput" accept=".xlsx" />
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom: 24px;">
-    <div class="controls-grid">
-      <div>
-        <label>Select Brand Profile</label>
-        <select id="brandSelect">
-          <option value="Dahua">Dahua</option>
-          <option value="HikVISION">HikVISION</option>
-          <option value="UNV">UNV</option>
-        </select>
-      </div>
-      <div>
-        <label>Retention Days (MOI Standard: 120)</label>
-        <input type="number" id="retentionDays" value="120" style="padding: 10px; background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; width: 100%; box-sizing: border-box;">
-      </div>
-      <div>
-        <label>Target FPS & Resolution</label>
-        <select id="bitratePreset">
-          <option value="4">4MP (H.265 Standard ~ 4 Mbps)</option>
-          <option value="2">2MP (H.265 Standard ~ 2 Mbps)</option>
-        </select>
-      </div>
-    </div>
-    <button onclick="processFiles()">Generate Auto-Costing Sheet</button>
-  </div>
-
-  <div class="card" id="outputCard" style="display: none;">
-    <h2>Automated Infrastructure Analysis</h2>
-    <div class="summary-box">
-      <div class="stat-card">Total Cameras<span id="totalCams">0</span></div>
-      <div class="stat-card">Recommended NVR<span id="recNvr">-</span></div>
-      <div class="stat-card">Storage Required<span id="recHdd">-</span></div>
-      <div class="stat-card">UPS Capacity<span id="recUps">-</span></div>
-    </div>
-
-    <h2 style="margin-top: 32px;">Itemized Costing Sheet</h2>
-    <table id="costingTable">
-      <thead>
-        <tr>
-          <th>Category / Description</th>
-          <th>Model / Specs</th>
-          <th>Qty</th>
-          <th>Unit Price (QAR)</th>
-          <th>Total Price (QAR)</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-      <tfoot>
-        <tr class="total-row">
-          <td colspan="4">Grand Total Estimated Cost</td>
-          <td id="grandTotal">0 QAR</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</div>
-
-<script>
-let priceCatalog = {};
-
-document.getElementById('xlsxInput').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, {type: 'array'});
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
     
-    priceCatalog = {};
-    workbook.SheetNames.forEach(sheetName => {
-      priceCatalog[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-    });
-  };
-  reader.readAsArrayBuffer(file);
-});
+    <!-- Header -->
+    <header class="border-b border-slate-700 pb-4 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-amber-500">FLORA SECURITY SYSTEMS W.L.L.</h1>
+        <p class="text-xs text-slate-400">MOI-SSD CCTV Survey & Dynamic Estimator</p>
+      </div>
+      <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full font-mono">QATAR COMPLIANT</span>
+    </header>
 
-async function processFiles() {
-  const docxFile = document.getElementById('docxInput').files[0];
-  if (!docxFile) {
-    alert("Please upload the Site Visit Word Document (.docx)");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const arrayBuffer = e.target.result;
-    const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = result.value;
-
-    let parsedData = parseDocxTables(wrapper);
-    calculateAndRender(parsedData);
-  };
-  reader.readAsArrayBuffer(docxFile);
-}
-
-function parseDocxTables(container) {
-  const tables = container.querySelectorAll('table');
-  let data = {
-    domeQty: 0,
-    bulletQty: 0,
-    ptzQty: 0,
-    anprQty: 0,
-    kpoiQty: 0,
-    customWorkstationCost: 0,
-    civilWorkQty: 0,
-    civilWorkUnit: 0
-  };
-
-  tables.forEach(table => {
-    const rows = Array.from(table.querySelectorAll('tr')).map(tr => 
-      Array.from(tr.querySelectorAll('td, th')).map(td => td.innerText.trim())
-    );
-
-    rows.forEach(r => {
-      const text = r.join(' ').toLowerCase();
+    <!-- Upload & Parameters Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
-      if (text.includes('cctv cameras') || text.includes('dome')) {
-        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
-        if (qty > 0) data.domeQty += qty;
-      }
-      if (text.includes('anpr')) {
-        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
-        if (qty > 0) data.anprQty += qty;
-      }
-      if (text.includes('k-poi') || text.includes('kpoi')) {
-        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
-        if (qty > 0) data.kpoiQty += qty;
-      }
-      if (text.includes('monitoring') || text.includes('workstation')) {
-        let price = parseFloat(r[4]) || parseFloat(r[3]) || 0;
-        if (price > 0) data.customWorkstationCost = price;
-      }
-      if (text.includes('civil work')) {
-        let qty = parseInt(r[3]) || 0;
-        let unit = parseFloat(r[4]) || 0;
-        if (qty > 0) {
-          data.civilWorkQty = qty;
-          data.civilWorkUnit = unit;
-        }
-      }
-    });
-  });
+      <!-- Step 1: Upload Word Survey -->
+      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5">
+        <h2 class="font-semibold text-amber-400 mb-2">1. Upload Survey (.docx)</h2>
+        <input type="file" id="surveyFile" accept=".docx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-amber-400 hover:file:bg-slate-600 cursor-pointer"/>
+        <div id="surveyStatus" class="mt-3 text-xs text-slate-400 font-mono">Status: Awaiting file...</div>
+      </div>
 
-  return data;
-}
+      <!-- Step 2: Upload Excel Price List -->
+      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5">
+        <h2 class="font-semibold text-amber-400 mb-2">2. Upload Price List (.xlsx)</h2>
+        <input type="file" id="priceFile" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-amber-400 hover:file:bg-slate-600 cursor-pointer"/>
+        <div id="priceStatus" class="mt-3 text-xs text-slate-400 font-mono">Status: Awaiting file...</div>
+      </div>
 
-function calculateAndRender(data) {
-  const brand = document.getElementById('brandSelect').value;
-  const days = parseInt(document.getElementById('retentionDays').value) || 120;
-  const MbpsPerCam = parseFloat(document.getElementById('bitratePreset').value) || 4;
+      <!-- Step 3: Configure Parameters -->
+      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5 space-y-3">
+        <h2 class="font-semibold text-amber-400">3. Parameters & Selection</h2>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Avg Cable Length / Cam (m)</label>
+          <input type="number" id="avgCableLength" value="100" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1 text-sm text-slate-200 focus:outline-none focus:border-amber-500"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Select Hardware Brand</label>
+          <select id="brandSelect" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+            <option value="">Upload Price List First...</option>
+          </select>
+        </div>
+        <button id="btnCalculate" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold py-2 rounded text-sm transition">Generate Costing BOQ</button>
+      </div>
 
-  const totalCams = data.domeQty + data.bulletQty + data.ptzQty + data.anprQty + data.kpoiQty;
-  if (totalCams === 0) {
-    alert("No camera quantities were extracted from the document.");
-    return;
-  }
+    </div>
 
-  // 1. Determine NVR Capacity Needed
-  let nvrModel = "";
-  let nvrPrice = 0;
-  if (totalCams <= 16) nvrModel = "NVR 16CH";
-  else if (totalCams <= 32) nvrModel = "NVR 32CH";
-  else nvrModel = "NVR 64CH";
+    <!-- Summary KPI Cards -->
+    <div id="kpiSection" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
+        <span class="text-xs text-slate-400">Total Cameras</span>
+        <div id="kpiCameras" class="text-xl font-bold text-slate-100">0</div>
+      </div>
+      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
+        <span class="text-xs text-slate-400">RAID 5 Storage Required</span>
+        <div id="kpiStorage" class="text-xl font-bold text-amber-400">0 TB</div>
+      </div>
+      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
+        <span class="text-xs text-slate-400">UPS Sizing</span>
+        <div id="kpiUPS" class="text-xl font-bold text-emerald-400">0 kVA</div>
+      </div>
+      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
+        <span class="text-xs text-slate-400">Total Selling Price</span>
+        <div id="kpiTotalSell" class="text-xl font-bold text-blue-400">QAR 0.00</div>
+      </div>
+    </div>
 
-  // Lookup in Catalog
-  let brandCatalog = priceCatalog[brand] || [];
-  let nvrItem = brandCatalog.find(i => (i.Item || '').toString().toLowerCase().includes(nvrModel.toLowerCase()));
-  if (nvrItem) {
-    nvrModel = `${nvrItem.Model} (${nvrItem.Item})`;
-    nvrPrice = parseFloat(nvrItem['Unit Price']) || 0;
-  }
+    <!-- Generated BOQ Table -->
+    <div id="boqSection" class="hidden bg-slate-800 border border-slate-700 rounded-lg p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold text-slate-100">Generated Bill of Quantities (BOQ)</h2>
+        <button id="btnExport" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-xs text-slate-200 px-3 py-1.5 rounded transition">Export Excel BOQ</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/60 uppercase text-slate-400 border-b border-slate-700">
+            <tr>
+              <th class="p-3">Category</th>
+              <th class="p-3">Description</th>
+              <th class="p-3">Brand / Model</th>
+              <th class="p-3">QTY</th>
+              <th class="p-3">Unit Cost</th>
+              <th class="p-3">Unit Sell (+Margin)</th>
+              <th class="p-3">Total Sell (QAR)</th>
+            </tr>
+          </thead>
+          <tbody id="boqTableBody" class="divide-y divide-slate-700/50"></tbody>
+        </table>
+      </div>
+    </div>
 
-  // 2. Storage Calculation Formula: (Cams * Mbps * 3600 * 24 * Days) / (8 * 1,000,000) = TB
-  const storageTBNeeded = Math.ceil((totalCams * MbpsPerCam * 3600 * 24 * days) / (8 * 1000000));
-  
-  // Storage Drives Selection (from HDD sheet)
-  let hddCatalog = priceCatalog['HDD'] || [];
-  let hdd16TB = hddCatalog.find(i => (i.Item || '').toString().includes('16TB')) || { Model: '16XTB', 'Unit Price': 2300 };
-  let hddQty = Math.ceil(storageTBNeeded / 16);
-  let hddUnitPrice = parseFloat(hdd16TB['Unit Price']) || 2300;
+  </div>
 
-  // 3. UPS Calculation (Avg camera 15W + NVR/Workstation 200W + 20% margin)
-  const totalWatts = (totalCams * 15) + 200;
-  const requiredVA = Math.ceil((totalWatts * 1.2) / 0.7); // VA rating with Power Factor 0.7
-  let upsRating = requiredVA <= 1000 ? "1 KVA UPS" : requiredVA <= 2000 ? "2 KVA UPS" : "3 KVA UPS";
-
-  // Build Costing Sheet Line Items
-  let lineItems = [];
-
-  // Cameras
-  let camItem = brandCatalog.find(i => (i.Item || '').toString().toLowerCase().includes('4mp camera')) || { Model: 'Std 4MP', 'Unit Price': 350 };
-  let camPrice = parseFloat(camItem['Unit Price']) || 350;
-
-  if (totalCams > 0) {
-    lineItems.push({
-      cat: "CCTV Cameras (Coverage / Dome)",
-      model: `${camItem.Model || 'Standard'}`,
-      qty: totalCams,
-      unit: camPrice,
-      total: totalCams * camPrice
-    });
-  }
-
-  // Recording
-  lineItems.push({
-    cat: "Recording System",
-    model: nvrModel,
-    qty: 1,
-    unit: nvrPrice,
-    total: nvrPrice
-  });
-
-  // Storage
-  lineItems.push({
-    cat: `Storage (${storageTBNeeded} TB Required @ ${days} Days)`,
-    model: `16TB HDD (${hdd16TB.Model}) x ${hddQty}`,
-    qty: hddQty,
-    unit: hddUnitPrice,
-    total: hddQty * hddUnitPrice
-  });
-
-  // Workstation
-  if (data.customWorkstationCost > 0) {
-    lineItems.push({
-      cat: "Monitoring Workstation",
-      model: "24inch / i5 HP",
-      qty: 1,
-      unit: data.customWorkstationCost,
-      total: data.customWorkstationCost
-    });
-  }
-
-  // UPS
-  lineItems.push({
-    cat: "Power Backup System",
-    model: `${upsRating} (Calculated ${totalWatts}W Load)`,
-    qty: 1,
-    unit: 1500,
-    total: 1500
-  });
-
-  // Civil Work
-  if (data.civilWorkQty > 0) {
-    lineItems.push({
-      cat: "Civil / Infrastructure Works",
-      model: "Site Specific",
-      qty: data.civilWorkQty,
-      unit: data.civilWorkUnit,
-      total: data.civilWorkQty * data.civilWorkUnit
-    });
-  }
-
-  // Display Summary Stats
-  document.getElementById('totalCams').innerText = totalCams;
-  document.getElementById('recNvr').innerText = nvrModel;
-  document.getElementById('recHdd').innerText = `${storageTBNeeded} TB (${hddQty}x 16TB)`;
-  document.getElementById('recUps').innerText = upsRating;
-
-  // Render Table
-  const tbody = document.getElementById('tableBody');
-  tbody.innerHTML = '';
-  let grandTotal = 0;
-
-  lineItems.forEach(item => {
-    grandTotal += item.total;
-    let tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.cat}</td>
-      <td>${item.model}</td>
-      <td>${item.qty}</td>
-      <td>${item.unit.toLocaleString()}</td>
-      <td>${item.total.toLocaleString()}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  document.getElementById('grandTotal').innerText = `${grandTotal.toLocaleString()} QAR`;
-  document.getElementById('outputCard').style.display = 'block';
-}
-</script>
-
+  <script src="app.js"></script>
 </body>
 </html>
