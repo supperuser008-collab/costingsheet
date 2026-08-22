@@ -2,8 +2,8 @@
 let boqData = [
     // Category A: Cameras
     { cat: 'A', catTitle: 'Cameras and accessories', isCat: true },
-    { id: 1, type: 'cam', cat: 'A', desc: 'Dome Camera - 2MP WDR LightHunter IR Network Dome Camera', brand: 'UNV', model: 'IPC3232SB- AHDZK-PI-I0', uom: 'EA', qty: 4, cost: 371, isService: false },
-    { id: 2, type: 'cam', cat: 'A', desc: 'Bullet Camera - 2MP HD IR VF Bullet Network Camera', brand: 'UNV', model: 'IPC2322LB- ADZK-G', uom: 'EA', qty: 15, cost: 422, isService: false },
+    { id: 1, type: 'cam', subtype: 'dome', cat: 'A', desc: 'Dome Camera - 2MP WDR LightHunter IR Network Dome Camera', brand: 'UNV', model: 'IPC3232SB- AHDZK-PI-I0', uom: 'EA', qty: 4, cost: 371, isService: false },
+    { id: 2, type: 'cam', subtype: 'bullet', cat: 'A', desc: 'Bullet Camera - 2MP HD IR VF Bullet Network Camera', brand: 'UNV', model: 'IPC2322LB- ADZK-G', uom: 'EA', qty: 15, cost: 422, isService: false },
     
     // Category B: Headend
     { cat: 'B', catTitle: 'VMS, NVR & Storage', isCat: true },
@@ -45,14 +45,14 @@ let boqData = [
 ];
 
 /**
- * Handle Word Document (.docx) Upload & Extract Raw Text using Mammoth.js
+ * Extract Raw Text from Word Doc and Parse Quantities into App State
  */
 function handleWordUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     if (typeof mammoth === 'undefined') {
-        alert("Mammoth library is not loaded. Please check your internet connection.");
+        alert("Mammoth library is not loaded. Please ensure CDN scripts are accessible.");
         return;
     }
 
@@ -62,15 +62,58 @@ function handleWordUpload(event) {
         mammoth.extractRawText({ arrayBuffer: arrayBuffer })
             .then(function(result) {
                 const text = result.value;
-                console.log("Uploaded Word Document Text:\n", text);
-                alert("Word survey uploaded and extracted successfully! Check browser console for text output.");
+                parseSurveyText(text);
+                event.target.value = ''; // Reset input
             })
             .catch(function(err) {
                 console.error("Error parsing Word document:", err);
-                alert("Failed to read the Word file.");
+                alert("Failed to parse Word file. Make sure it is a valid .docx document.");
             });
     };
     reader.readAsArrayBuffer(file);
+}
+
+/**
+ * Scan Word document text for quantities and auto-update state
+ */
+function parseSurveyText(text) {
+    let matchFound = false;
+
+    // Detect Dome Cameras (e.g., "Dome Camera: 8" or "8 Dome")
+    const domeMatch = text.match(/Dome(?:\s+Camera)?s?\s*[:=|-]?\s*(\d+)/i) || text.match(/(\d+)\s*x?\s*Dome/i);
+    if (domeMatch) {
+        const domeItem = boqData.find(i => i.subtype === 'dome');
+        if (domeItem) {
+            domeItem.qty = parseInt(domeMatch[1], 10);
+            matchFound = true;
+        }
+    }
+
+    // Detect Bullet Cameras (e.g., "Bullet Camera: 12" or "12 Bullet")
+    const bulletMatch = text.match(/Bullet(?:\s+Camera)?s?\s*[:=|-]?\s*(\d+)/i) || text.match(/(\d+)\s*x?\s*Bullet/i);
+    if (bulletMatch) {
+        const bulletItem = boqData.find(i => i.subtype === 'bullet');
+        if (bulletItem) {
+            bulletItem.qty = parseInt(bulletMatch[1], 10);
+            matchFound = true;
+        }
+    }
+
+    // Detect Conduit Meters (e.g., "Conduit: 150m" or "Conduit Length - 200")
+    const conduitMatch = text.match(/Conduit(?:s|\s+Length)?\s*[:=|-]?\s*(\d+)/i);
+    if (conduitMatch) {
+        document.getElementById('conduitMeters').value = parseInt(conduitMatch[1], 10);
+        matchFound = true;
+    }
+
+    // Recalculate Totals & Re-render UI Table
+    calculateBOQ();
+
+    if (matchFound) {
+        alert("Survey data extracted successfully! BOQ updated.");
+    } else {
+        alert("Survey file read, but no matching camera/conduit patterns were found. Please verify document formatting.");
+    }
 }
 
 /**
@@ -93,7 +136,7 @@ function calculateBOQ() {
     const cat6Coils = Math.ceil((totalCams * 100) / 305); 
     const totalCableCost = (cat6Coils * 460) + (1 * 40) + (totalCams * 9) + (1 * 60) + (1 * 35) + (totalCams * 8) + (3 * 12) + (10 * 20) + 750 + 500 + 500;
     
-    // 3. Conduit Cost Calculation (Manual Input or 0)
+    // 3. Conduit Cost Calculation
     const pvcPipes = (conduitMeters / 2) / 90;
     const giPipes = (conduitMeters / 2) / 90;
     const totalConduitCost = (conduitMeters > 0) ? ((pvcPipes * 280) + (giPipes * 470) + 500 + 200) : 0;
@@ -110,6 +153,7 @@ function calculateBOQ() {
 
     // Render Table
     const tbody = document.getElementById('boqTableBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     let grandTotalCost = 0;
