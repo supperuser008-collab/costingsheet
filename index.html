@@ -3,296 +3,416 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Qatar MOI CCTV Costing Interface - Flora Group / POT27813 Format</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS Library -->
+  <title>CCTV Automated Costing Sheet Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #3b82f6;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: var(--accent);
+    }
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    input[type="file"], select {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: #0f172a;
+      color: var(--accent);
+    }
+    .total-row {
+      font-weight: bold;
+      background: #0f172a;
+    }
+    .summary-box {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .stat-card span {
+      display: block;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--accent);
+    }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+<body>
 
-  <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-    
-    <!-- Top Bar -->
-    <div class="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight">Qatar MOI CCTV Costing Generator</h1>
-        <p class="text-xs text-slate-400 mt-1">Matched directly to MOI SSD Standard Format (POT27813 Worksheets)</p>
-      </div>
-      <button onclick="generateExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-        <span>Export Excel (.xlsx)</span>
-      </button>
+<div class="container">
+  <h1>MOI-SSD CCTV Automated Costing Engine</h1>
+
+  <div class="upload-grid">
+    <div class="card">
+      <label>1. Upload Site Survey Report (.docx)</label>
+      <input type="file" id="docxInput" accept=".docx" />
     </div>
-
-    <div class="p-6 space-y-8">
-      
-      <!-- Project Metadata Header -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Project Name / Subject</label>
-          <input type="text" id="projSubject" value="Al Hamad Garage Building No. 2" class="w-full p-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Material Margin %</label>
-          <input type="number" step="1" id="matMargin" value="12" class="w-full p-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Services Margin %</label>
-          <input type="number" step="1" id="srvMargin" value="5" class="w-full p-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-      </div>
-
-      <!-- Floor-by-Floor Camera Quantities (QTY Sheet Input) -->
-      <div>
-        <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
-          <span class="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-xs">1</span>
-          Floor-Wise Camera Distribution (Site Survey Inputs)
-        </h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-slate-700 text-xs uppercase">
-                <th class="p-2 border text-left">Floor / Zone</th>
-                <th class="p-2 border w-28">Dome Qty</th>
-                <th class="p-2 border w-28">Bullet Qty</th>
-                <th class="p-2 border w-28">PTZ Qty</th>
-                <th class="p-2 border w-28">K-POI Qty</th>
-                <th class="p-2 border w-28">ANPR Qty</th>
-              </tr>
-            </thead>
-            <tbody id="floorRows">
-              <tr><td class="p-2 border font-medium">Site Plan</td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-dome" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-bullet" value="15"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-ptz" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-kpoi" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-anpr" value="0"></td></tr>
-              <tr><td class="p-2 border font-medium">GF (Ground Floor)</td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-dome" value="4"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-bullet" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-ptz" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-kpoi" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-anpr" value="0"></td></tr>
-              <tr><td class="p-2 border font-medium">MF (Mezzanine Floor)</td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-dome" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-bullet" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-ptz" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-kpoi" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-anpr" value="0"></td></tr>
-              <tr><td class="p-2 border font-medium">1F (First Floor)</td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-dome" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-bullet" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-ptz" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-kpoi" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-anpr" value="0"></td></tr>
-              <tr><td class="p-2 border font-medium">RF (Roof Floor)</td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-dome" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-bullet" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-ptz" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-kpoi" value="0"></td><td class="p-2 border"><input type="number" class="w-full p-1 border rounded text-center qty-anpr" value="0"></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Main BOQ System Hardware Selection -->
-      <div>
-        <h2 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
-          <span class="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-xs">2</span>
-          MOI Head-End Hardware & Prices
-        </h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="border rounded-lg p-4 space-y-3 bg-slate-50">
-            <h3 class="font-semibold text-slate-700 text-sm uppercase">Cameras Base Cost</h3>
-            <div class="flex justify-between items-center text-sm">
-              <span>Dome Camera Cost (QAR):</span>
-              <input type="number" id="priceDome" value="371" class="w-28 p-1 border rounded text-right">
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span>Bullet Camera Cost (QAR):</span>
-              <input type="number" id="priceBullet" value="422" class="w-28 p-1 border rounded text-right">
-            </div>
-          </div>
-
-          <div class="border rounded-lg p-4 space-y-3 bg-slate-50">
-            <h3 class="font-semibold text-slate-700 text-sm uppercase">Storage & NVR</h3>
-            <div class="flex justify-between items-center text-sm">
-              <span>NVR 32CH Price (QAR):</span>
-              <input type="number" id="priceNVR" value="1650" class="w-28 p-1 border rounded text-right">
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span>16TB HDD Unit Price (QAR):</span>
-              <input type="number" id="priceHDD" value="2650" class="w-28 p-1 border rounded text-right">
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div class="card">
+      <label>2. Upload Price List (.xlsx)</label>
+      <input type="file" id="xlsxInput" accept=".xlsx" />
     </div>
   </div>
 
-  <script>
-    function generateExcel() {
-      const wb = XLSX.utils.book_new();
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="controls-grid">
+      <div>
+        <label>Select Brand Profile</label>
+        <select id="brandSelect">
+          <option value="Dahua">Dahua</option>
+          <option value="HikVISION">HikVISION</option>
+          <option value="UNV">UNV</option>
+        </select>
+      </div>
+      <div>
+        <label>Retention Days (MOI Standard: 120)</label>
+        <input type="number" id="retentionDays" value="120" style="padding: 10px; background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; width: 100%; box-sizing: border-box;">
+      </div>
+      <div>
+        <label>Target FPS & Resolution</label>
+        <select id="bitratePreset">
+          <option value="4">4MP (H.265 Standard ~ 4 Mbps)</option>
+          <option value="2">2MP (H.265 Standard ~ 2 Mbps)</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="processFiles()">Generate Auto-Costing Sheet</button>
+  </div>
 
-      // Read Web Values
-      const projSubject = document.getElementById('projSubject').value;
-      const matMargin = (parseFloat(document.getElementById('matMargin').value) || 12) / 100;
-      const srvMargin = (parseFloat(document.getElementById('srvMargin').value) || 5) / 100;
-      const priceDome = parseFloat(document.getElementById('priceDome').value) || 371;
-      const priceBullet = parseFloat(document.getElementById('priceBullet').value) || 422;
-      const priceNVR = parseFloat(document.getElementById('priceNVR').value) || 1650;
-      const priceHDD = parseFloat(document.getElementById('priceHDD').value) || 2650;
+  <div class="card" id="outputCard" style="display: none;">
+    <h2>Automated Infrastructure Analysis</h2>
+    <div class="summary-box">
+      <div class="stat-card">Total Cameras<span id="totalCams">0</span></div>
+      <div class="stat-card">Recommended NVR<span id="recNvr">-</span></div>
+      <div class="stat-card">Storage Required<span id="recHdd">-</span></div>
+      <div class="stat-card">UPS Capacity<span id="recUps">-</span></div>
+    </div>
 
-      // Extract Site Plan counts
-      const getVal = (cls, idx) => parseFloat(document.querySelectorAll('.' + cls)[idx].value) || 0;
+    <h2 style="margin-top: 32px;">Itemized Costing Sheet</h2>
+    <table id="costingTable">
+      <thead>
+        <tr>
+          <th>Category / Description</th>
+          <th>Model / Specs</th>
+          <th>Qty</th>
+          <th>Unit Price (QAR)</th>
+          <th>Total Price (QAR)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">Grand Total Estimated Cost</td>
+          <td id="grandTotal">0 QAR</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+let priceCatalog = {};
+
+document.getElementById('xlsxInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, {type: 'array'});
+    
+    priceCatalog = {};
+    workbook.SheetNames.forEach(sheetName => {
+      priceCatalog[sheetName] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+async function processFiles() {
+  const docxFile = document.getElementById('docxInput').files[0];
+  if (!docxFile) {
+    alert("Please upload the Site Visit Word Document (.docx)");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const arrayBuffer = e.target.result;
+    const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = result.value;
+
+    let parsedData = parseDocxTables(wrapper);
+    calculateAndRender(parsedData);
+  };
+  reader.readAsArrayBuffer(docxFile);
+}
+
+function parseDocxTables(container) {
+  const tables = container.querySelectorAll('table');
+  let data = {
+    domeQty: 0,
+    bulletQty: 0,
+    ptzQty: 0,
+    anprQty: 0,
+    kpoiQty: 0,
+    customWorkstationCost: 0,
+    civilWorkQty: 0,
+    civilWorkUnit: 0
+  };
+
+  tables.forEach(table => {
+    const rows = Array.from(table.querySelectorAll('tr')).map(tr => 
+      Array.from(tr.querySelectorAll('td, th')).map(td => td.innerText.trim())
+    );
+
+    rows.forEach(r => {
+      const text = r.join(' ').toLowerCase();
       
-      const domeVals = [0,1,2,3,4].map(i => getVal('qty-dome', i));
-      const bulletVals = [0,1,2,3,4].map(i => getVal('qty-bullet', i));
-      const ptzVals = [0,1,2,3,4].map(i => getVal('qty-ptz', i));
-      const kpoiVals = [0,1,2,3,4].map(i => getVal('qty-kpoi', i));
-      const anprVals = [0,1,2,3,4].map(i => getVal('qty-anpr', i));
+      if (text.includes('cctv cameras') || text.includes('dome')) {
+        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
+        if (qty > 0) data.domeQty += qty;
+      }
+      if (text.includes('anpr')) {
+        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
+        if (qty > 0) data.anprQty += qty;
+      }
+      if (text.includes('k-poi') || text.includes('kpoi')) {
+        let qty = parseInt(r[3]) || parseInt(r[2]) || 0;
+        if (qty > 0) data.kpoiQty += qty;
+      }
+      if (text.includes('monitoring') || text.includes('workstation')) {
+        let price = parseFloat(r[4]) || parseFloat(r[3]) || 0;
+        if (price > 0) data.customWorkstationCost = price;
+      }
+      if (text.includes('civil work')) {
+        let qty = parseInt(r[3]) || 0;
+        let unit = parseFloat(r[4]) || 0;
+        if (qty > 0) {
+          data.civilWorkQty = qty;
+          data.civilWorkUnit = unit;
+        }
+      }
+    });
+  });
 
-      // ----------------------------------------------------
-      // 1. SHEET: UNV-BOQ
-      // ----------------------------------------------------
-      const unvData = [
-        [],
-        [null, "Costing Summary", null, null, null, "Total Cemera", null, "Total Sales (QAR)", null, {f: "K49"}, matMargin, "MATERIALS"],
-        [null, null, null, null, null, {f: "G9+G10+G23"}, null, "Total Cost (QAR)", null, {f: "I49"}, srvMargin, "SERVICES"],
-        [],
-        [null, `SUBJECT : ${projSubject}`],
-        [null, null, null, null, null, null, null, "All-in-Cost Price (QAR)", null, "Sell Price (QAR)"],
-        [null, "No", "Product Description", "Brand", "Model No", "UOM", "Qty", "Unit Price", "Total Price", "Unit Price", "Total Price", "Remarks"],
-        [null, "A", "Cameras and accessories"],
-        [null, 1, "Dome Camera\n2MP WDR LightHunter IR Network Dome Camera", "UNV", "IPC3232SB- AHDZK-PI-I0", "EA", {f: "QTY!C8"}, priceDome, {f: "H9*G9"}, {f: "H9*($K$2+1)"}, {f: "J9*G9"}, "With Mount"],
-        [null, 2, "Bullet Camera\n2MP HD IR VF Bullet Network Camera", "UNV", "IPC2322LB- ADZK-G", "EA", {f: "QTY!D8"}, priceBullet, {f: "H10*G10"}, {f: "H10*($K$2+1)"}, {f: "J10*G10"}, "With Mount"],
-        [null, "B", "VMS, NVR & Storage"],
-        [null, {f: "B10+1"}, "32 Ch Network Video Recorder", "UNV", "NVR508-32B", "EA", 1, priceNVR, {f: "H12*G12"}, {f: "H12*($K$2+1)"}, {f: "J12*G12"}],
-        [null, {f: "B12+1"}, "16TB HDD", "Seagate", "ST16000NM002H", "EA", {f: "QTY!E20+QTY!G20"}, priceHDD, {f: "H13*G13"}, {f: "H13*($K$2+1)"}, {f: "J13*G13"}],
-        [null, "C", "Network Switches and accessories"],
-        [null, {f: "B13+1"}, "24 Port POE Switch", "Hikvision", "TBD", "EA", 1, 950, {f: "H15*G15"}, {f: "H15*($K$2+1)"}, {f: "J15*G15"}],
-        [null, {f: "B15+1"}, "8 Port POE switch with power supply", "Hikvision", "TBD", "EA", 1, 650, {f: "H16*G16"}, {f: "H16*($K$2+1)"}, {f: "J16*G16"}],
-        [null, {f: "B16+1"}, "Outdoor Enclosure", "Netcon", "TBD", "EA", 1, 750, {f: "H17*G17"}, {f: "H17*($K$2+1)"}, {f: "J17*G17"}],
-        [null, "D", "Workstation and Monitor"],
-        [null, {f: "B17+1"}, '24" LED FHD Monitor_MOI Approved', "UNV", "UNV-MW3224-V", "EA", 1, 320, {f: "H19*G19"}, {f: "H19*($K$2+1)"}, {f: "J19*G19"}],
-        [null, {f: "B19+1"}, '32" LED FHD Monitor_MOI Approved', "UNV", "UNV-MW3232-V-K2", "EA", 1, 750, {f: "H20*G20"}, {f: "H20*($K$2+1)"}, {f: "J20*G20"}],
-        [null, {f: "B20+1"}, "CCTV Workstation with K/M", "Dell", "Pro Tower QCT 1250", "EA", 1, 3000, {f: "H21*G21"}, {f: "H21*($K$2+1)"}, {f: "J21*G21"}],
-        [null, "D", "K-POI System"],
-        [null, null, "4MP BOX WizMind Network Camera", "Dahua", "DH-IPC-HF7442F-Z-X", "EA", 0, 1285, {f: "H23*G23"}, {f: "H23*($K$2+1)"}, {f: "J23*G23"}],
-        [null, null, "12 MP 1/1.7' 10.5-42mm vari-focal lens", "Dahua", "DH-PFL1575-A12D", "EA", 0, 500, {f: "H24*G24"}, {f: "H24*($K$2+1)"}, {f: "J24*G24"}],
-        [null, null, "Wall mount Bracket", "Dahua", "DH-PFB121W", "EA", 0, 25, {f: "H25*G25"}, {f: "H25*($K$2+1)"}, {f: "J25*G25"}],
-        [null, null, "1U Intelligent Video Device, 10 Channel. 1 slot, SATA3.0 Max.20 TB/HDD", "Dahua", "DHI-IVD5148-1I-4G/WT", "EA", 0, 3600, {f: "H26*G26"}, {f: "H26*($K$2+1)"}, {f: "J26*G26"}],
-        [null, null, "8TB HDD", "Segate", "TBD", "EA", 0, 1500, {f: "H27*G27"}, {f: "H27*($K$2+1)"}, {f: "J27*G27"}, {f: "SUM(I23:I27)"}, "K-POI Cost"],
-        [null, "G", "ANPR System"],
-        [null, null, "4MP Smart ANPR Camera", "Dahua", "DHI-ITC413-PW4D-Z1", "EA", 0, 1504, {f: "H29*G29"}, {f: "H29*($K$2+1)"}, {f: "J29*G29"}],
-        [null, null, "Pole Mount Bracket", "Dahua", "DH-PFA150", "EA", 0, 65, {f: "H30*G30"}, {f: "H30*($K$2+1)"}, {f: "J30*G30"}],
-        [null, null, "16CH 8DD 2U Network Video Recorder", "Dahua", "DHI-NVR5816-EI", "EA", 0, 2271, {f: "H31*G31"}, {f: "H31*($K$2+1)"}, {f: "J31*G31"}],
-        [null, null, "8TB HDD", "Segate", "TBD", "EA", 0, 1500, {f: "H32*G32"}, {f: "H32*($K$2+1)"}, {f: "J32*G32"}],
-        [null, null, "DSS Professional V8 16 Ch Base", "Dahua", "DSS8PRVB", "EA", 0, 1350, {f: "H33*G33"}, {f: "H33*($K$2+1)"}, {f: "J33*G33"}],
-        [null, null, "Single Channel License", "Dahua", "DSS8PRPML", "EA", 0, 600, {f: "H34*G34"}, {f: "H34*($K$2+1)"}, {f: "J34*G34"}],
-        [null, null, "ANPR Workstation", "Dell", "TBD", "EA", 0, 3000, {f: "H35*G35"}, {f: "H35*($K$2+1)"}, {f: "J35*G35"}],
-        [null, null, '24" LED FHD Monitor_MOI Approved', "UNV", "UNV-MW3224-V", "EA", 0, 320, {f: "H36*G36"}, {f: "H36*($K$2+1)"}, {f: "J36*G36"}, {f: "SUM(I29:I36)"}, "ANPR Cost"],
-        [null, "J", "ACS System"],
-        [null, {f: "B21+1"}, "Standalone Access control system", "Hikvision", "TBD", "EA", 1, 500, {f: "H38*G38"}, {f: "H38*($K$2+1)"}, {f: "J38*G38"}],
-        [null, "E", "CCTV Racks"],
-        [null, {f: "B38+1"}, "18U Floor Mount Rack (600X800)", "Norden", "1311-186610BK", "EA", 1, 1300, {f: "H40*G40"}, {f: "H40*($K$2+1)"}, {f: "J40*G40"}],
-        [null, null, "6U Floor Mount Rack with all accessories", "Norden", "TBD", "EA", 0, 850, {f: "H41*G41"}, {f: "H41*($K$2+1)"}, {f: "J41*G41"}],
-        [null, "F", "UPS System"],
-        [null, {f: "B40+1"}, "2KVA UPS with Battery Pack for 60 Min. Backup", "Hikvision", "TBD", "EA", 1, 4000, {f: "H43*G43"}, {f: "H43*($K$2+1)"}, {f: "J43*G43"}],
-        [null, "G", "Cabling and accessories"],
-        [null, {f: "B43+1"}, "Cabling and accessories", "TBD", "TBD", "LOT", 1, {f: "'BREAK DOWN'!J19"}, {f: "H45*G45"}, {f: "H45*($K$2+1)"}, {f: "J45*G45"}],
-        [null, {f: "B45+1"}, "Conduites and accessories", "TBD", "TBD", "LOT", 1, {f: "'BREAK DOWN'!J25"}, {f: "H46*G46"}, {f: "H46*($K$2+1)"}, {f: "J46*G46"}],
-        [null, "H", "Engineering & Services"],
-        [null, {f: "B46+1"}, "Installation, configuration, Testing & Commissioning", "TBD", "TBD", "LOT", 1, {f: "'BREAK DOWN'!J38"}, {f: "H48*G48"}, {f: "H48*($K$3+1)"}, {f: "J48*G48"}],
-        [null, null, null, null, null, null, null, "Total Cost", {f: "SUM(I9:I48)"}, "Total Sales", {f: "SUM(K9:K48)"}],
-        [],
-        [null, "General notes and work of exclusions :"],
-        [null, 1, "MOI-NCC, K-POI , ANPR, PTZ are excluded"],
-        [null, 2, "All Civil and Electrcail works, CCTV Poles are excluded"],
-        [null, 3, "CCTV Room Partition, AC, furniture (Desk, Chair) , Power requirements are provided by end-user"],
-        [null, 4, "Our proposal allows for only the items which is mentioned in the quote and any additional works or materials will be charged separately."]
-      ];
+  return data;
+}
 
-      // ----------------------------------------------------
-      // 2. SHEET: BREAK DOWN
-      // ----------------------------------------------------
-      const bdData = [
-        [],
-        [null, "BREAK DOWN DETAILS DO NOT ATTACHED WITH THE FINAL QUOTATION"],
-        [null, "BREAK DOWN"],
-        [null, null, "Cables and accessories", "Brand", "Model No", "UOM", "Qty", "Unit Price", "Total Price", "Remarks"],
-        [null, null, "Cat6 Cable 305M", "TBD", "TBD", "EA", {f: "G33*100/305"}, 460, {f: "H5*G5"}],
-        [null, null, "24 Port Patch panel", "TBD", "TBD", "EA", 1, 40, {f: "H6*G6"}],
-        [null, null, "Rj45 Keystone", "TBD", "TBD", "EA", {f: "G33"}, 9, {f: "H7*G7"}],
-        [null, null, "Rj45 Connector - Packet (50 pcs)", "TBD", "TBD", "EA", 1, 60, {f: "H8*G8"}],
-        [null, null, "Cable Manager", "TBD", "TBD", "EA", 1, 35, {f: "H9*G9"}],
-        [null, null, "Patch cord - 1M", "TBD", "TBD", "EA", {f: "G33"}, 8, {f: "H10*G10"}],
-        [null, null, "Patch cord - 3M", "TBD", "TBD", "EA", 3, 12, {f: "H11*G11"}],
-        [null, null, "CCTV Stickers", "TBD", "TBD", "LOT", 10, 20, {f: "H12*G12"}],
-        [null, null, "Fiber Cables and accessories", "TBD", "TBD", "LOT", 1, 750, {f: "H13*G13"}],
-        [null, null, "Sundries and miscellaneous (HDMI Cables and accessories)", "TBD", "TBD", "LOT", 1, 500, {f: "H14*G14"}],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I5:I14)"}],
-        [null, null, "Electrical cables and accessories"],
-        [null, null, "Electrical cables", "TBD", "TBD", "EA", 1, 500, {f: "H17*G17"}],
-        [null, null, "Sundries and miscellaneous", "TBD", "TBD", "EA", 1, 0, {f: "H18*G18"}],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I17:I18)"}, {f: "I15+I19"}],
-        [null, null, "Conduits and accessories"],
-        [null, null, "PVC Conduit and accessories", "TBD", "TBD", "EA", {f: "G33*0.5"}, 280, {f: "H21*G21"}, {f: "H21/10*2.75"}],
-        [null, null, "GI Conduit and accessories", "TBD", "TBD", "EA", {f: "G33*0.5"}, 470, {f: "H22*G22"}, {f: "H22/35*3.75"}],
-        [null, null, "Flexible conduit and accessories", "TBD", "TBD", "EA", 1, 500, {f: "H23*G23"}],
-        [null, null, "Sundries and miscellaneous \n(Drill bit, Pull Box, Saddles,Screws,Plugs,insulation,Etc.)", "TBD", "TBD", "LOT", 1, 200, {f: "H24*G24"}],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I21:I24)"}, {f: "I25"}],
-        [null, null, "Civil works and accessories"],
-        [null, null, "Road cutting and backflling", "Flora", "TBD", "MTR", 0, 450, {f: "H27*G27"}],
-        [null, null, "3 Meter Pole", "Flora", "TBD", "LOT", {f: "QTY!E8+QTY!H8"}, 1200, {f: "H28*G28"}],
-        [null, null, "1.5 Meter Pole", "Flora", "TBD", "LOT", {f: "QTY!K8"}, 700, {f: "H29*G29"}],
-        [null, null, "Pole foundation", "Flora", "TBD", "LOT", {f: "G28+G29"}, 300, {f: "H30*G30"}],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I27:I30)"}],
-        [null, null, "Engineering & Services"],
-        [null, null, "Camera Installation", "TBD", "TBD", "EA", {f: "'UNV-BOQ'!F3+'UNV-BOQ'!G29"}, 150, {f: "H33*G33"}],
-        [null, null, "Conduit Installation", "TBD", "TBD", "MTR", {f: "G33*90"}, 1, {f: "H34*G34"}],
-        [null, null, "Cable pulling and installation", "TBD", "TBD", "MTR", {f: "G34"}, 1, {f: "H35*G35"}],
-        [null, null, "Cabling Termination, Testing and Labeling", "TBD", "TBD", "EA", {f: "G33"}, 25, {f: "H36*G36"}],
-        [null, null, "Head end Installation, Configuration, Documentation, Commissioning, Training & Project Handover", "TBD", "TBD", "LOT", 1, 2500, {f: "H37*G37"}],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I33:I37)"}, {f: "I38+I31"}],
-        [null, null, null, null, null, null, null, null, null, {f: "SUM(J15:J38)"}]
-      ];
+function calculateAndRender(data) {
+  const brand = document.getElementById('brandSelect').value;
+  const days = parseInt(document.getElementById('retentionDays').value) || 120;
+  const MbpsPerCam = parseFloat(document.getElementById('bitratePreset').value) || 4;
 
-      // ----------------------------------------------------
-      // 3. SHEET: QTY
-      // ----------------------------------------------------
-      const qtyData = [
-        [],
-        [null, null, "Dome", "Bullet", "Pole", "PTZ", "K-POI", "Pole", "Total Camera", "ANPR", "Pole", "With ANPR", null, "Total cost", {f: "'UNV-BOQ'!J3"}],
-        [null, "Site Plan", domeVals[0], bulletVals[0], ptzVals[0], kpoiVals[0], 0, 0, 0, anprVals[0], {f: "J3"}, null, null, "Total Sales", {f: "'UNV-BOQ'!J2"}],
-        [null, "GF", domeVals[1], bulletVals[1], ptzVals[1], kpoiVals[1], 0, 0, 0, anprVals[1], null, null, null, "Margin", 0.16],
-        [null, "MF", domeVals[2], bulletVals[2], ptzVals[2], kpoiVals[2], 0, 0, 0, anprVals[2]],
-        [null, "1F", domeVals[3], bulletVals[3], ptzVals[3], kpoiVals[3], 0, 0, 0, anprVals[3]],
-        [null, "RF", domeVals[4], bulletVals[4], ptzVals[4], kpoiVals[4], 0, 0, 0, anprVals[4]],
-        [null, null, {f: "SUM(C3:C7)"}, {f: "SUM(D3:D7)"}, 0, {f: "SUM(F3:F7)"}, {f: "SUM(G3:G7)"}, 0, {f: "C8+D8+F8+G8"}, {f: "SUM(J3:J7)"}, {f: "SUM(K3:K7)"}, {f: "I8+J8"}],
-        [],
-        [null, "CAMERA CONFIGURATION PARAMETERS"],
-        [null, "Camera", "Encoding \nMode", "Recording Resolution", "FPS", "Bitrate", "No. of \nCameras", "1 Camera Storage", "Required \nStorage (TB)", "Remarks"],
-        [null, "Dome", "H.264", "1280x720", 15, 1.5, {f: "'UNV-BOQ'!G9"}, 2, {f: "G12*H12"}],
-        [null, "Bullet", "H.264", "1920x1080P", 15, 2.5, {f: "'UNV-BOQ'!G10"}, 3.3, {f: "G13*H13"}],
-        [null, "K-POI", "H.264", "1920x1080P", 15, 2.5, {f: "'UNV-BOQ'!G23"}, 3.3, {f: "G14*H14"}],
-        [null, null, null, null, null, null, {f: "SUM(G12:G14)"}, null, {f: "SUM(I12:I14)"}],
-        [],
-        [null, "NVR CONFIGURATION - RAID -05"],
-        [null, "Storage", "Array \nGroup", "Size of HDD", "Total \nNo of HDD", "After \nRAID", "HS", "Required \nStorage", "Usable Stotage \nAfter RAID", "Camera \n@1.5Mbps", "Camera \n@2.5Mbps", "Storage \nLoad"],
-        [null, "NVR508-32B", "GRP-1", "16TB", 6, {f: "E19-1"}, 1, {f: "(H12*J19)+(H13*K19)"}, {f: "F19*14.55"}, {f: "G12"}, {f: "G13+G14"}, {f: "H19/I19"}],
-        [null, null, null, null, {f: "SUM(E19)"}, null, {f: "SUM(G19)"}, {f: "SUM(H19)"}, {f: "SUM(I19)"}, {f: "SUM(J19:K19)"}],
-        [],
-        [null, "PROJECT", null, "Run Time Report", null, null, null, null, "UPS KVA"],
-        [null, "PROPOSED UPS", null, "https://netconenterprise.com/ups-runtime-calculator/", null, null, null, null, 2],
-        [null, "No", "Item Description", "Brand", "Availability", "Model No", "Quantity", "Watts", "Total Watts"],
-        [null, 1, '24" Monitor', "TBD", null, "TBD", 1, 50, {f: "H25*G25"}],
-        [null, 2, '32" Monitor', "TBD", null, "TBD", 1, 75, {f: "H26*G26"}],
-        [null, 3, "Worksation", "TBD", null, "TBD", 1, 250, {f: "H27*G27"}],
-        [null, 4, "24 Port Switch", "TBD", null, "TBD", 1, 300, {f: "H28*G28"}],
-        [null, 5, "16 Port Switch", "TBD", null, "TBD", 0, 170, {f: "H29*G29"}],
-        [null, 6, "8 Port Switch", "TBD", null, "TBD", 1, 100, {f: "H30*G30"}],
-        [null, 7, "NVR / ANPR", "TBD", null, "TBD", 1, 100, {f: "H31*G31"}],
-        [null, 8, "K-POI NVR", "Dahua", null, "TBD", 0, 80, {f: "H32*G32"}],
-        [],
-        [null, null, null, null, null, null, null, null, {f: "SUM(I25:I32)"}],
-        [null, 0.15, null, null, null, null, null, null, {f: "I34*0.15"}],
-        [null, "Total watts", null, null, null, null, null, null, {f: "SUM(I34:I35)"}],
-        [null, "Total Load with 15%", null, null, null, null, null, null, {f: "I36/(900*I23)"}]
-      ];
+  const totalCams = data.domeQty + data.bulletQty + data.ptzQty + data.anprQty + data.kpoiQty;
+  if (totalCams === 0) {
+    alert("No camera quantities were extracted from the document.");
+    return;
+  }
 
-      // Convert Arrays to Worksheets
-      const wsUNV = XLSX.utils.aoa_to_sheet(unvData);
-      const wsBD = XLSX.utils.aoa_to_sheet(bdData);
-      const wsQTY = XLSX.utils.aoa_to_sheet(qtyData);
+  // 1. Determine NVR Capacity Needed
+  let nvrModel = "";
+  let nvrPrice = 0;
+  if (totalCams <= 16) nvrModel = "NVR 16CH";
+  else if (totalCams <= 32) nvrModel = "NVR 32CH";
+  else nvrModel = "NVR 64CH";
 
-      // Append Sheets in Order
-      XLSX.utils.book_append_sheet(wb, wsUNV, "UNV-BOQ");
-      XLSX.utils.book_append_sheet(wb, wsBD, "BREAK DOWN");
-      XLSX.utils.book_append_sheet(wb, wsQTY, "QTY");
+  // Lookup in Catalog
+  let brandCatalog = priceCatalog[brand] || [];
+  let nvrItem = brandCatalog.find(i => (i.Item || '').toString().toLowerCase().includes(nvrModel.toLowerCase()));
+  if (nvrItem) {
+    nvrModel = `${nvrItem.Model} (${nvrItem.Item})`;
+    nvrPrice = parseFloat(nvrItem['Unit Price']) || 0;
+  }
 
-      // Save Output File
-      XLSX.writeFile(wb, "CCTV_MOI_Costing_POT27813.xlsx");
-    }
-  </script>
+  // 2. Storage Calculation Formula: (Cams * Mbps * 3600 * 24 * Days) / (8 * 1,000,000) = TB
+  const storageTBNeeded = Math.ceil((totalCams * MbpsPerCam * 3600 * 24 * days) / (8 * 1000000));
+  
+  // Storage Drives Selection (from HDD sheet)
+  let hddCatalog = priceCatalog['HDD'] || [];
+  let hdd16TB = hddCatalog.find(i => (i.Item || '').toString().includes('16TB')) || { Model: '16XTB', 'Unit Price': 2300 };
+  let hddQty = Math.ceil(storageTBNeeded / 16);
+  let hddUnitPrice = parseFloat(hdd16TB['Unit Price']) || 2300;
+
+  // 3. UPS Calculation (Avg camera 15W + NVR/Workstation 200W + 20% margin)
+  const totalWatts = (totalCams * 15) + 200;
+  const requiredVA = Math.ceil((totalWatts * 1.2) / 0.7); // VA rating with Power Factor 0.7
+  let upsRating = requiredVA <= 1000 ? "1 KVA UPS" : requiredVA <= 2000 ? "2 KVA UPS" : "3 KVA UPS";
+
+  // Build Costing Sheet Line Items
+  let lineItems = [];
+
+  // Cameras
+  let camItem = brandCatalog.find(i => (i.Item || '').toString().toLowerCase().includes('4mp camera')) || { Model: 'Std 4MP', 'Unit Price': 350 };
+  let camPrice = parseFloat(camItem['Unit Price']) || 350;
+
+  if (totalCams > 0) {
+    lineItems.push({
+      cat: "CCTV Cameras (Coverage / Dome)",
+      model: `${camItem.Model || 'Standard'}`,
+      qty: totalCams,
+      unit: camPrice,
+      total: totalCams * camPrice
+    });
+  }
+
+  // Recording
+  lineItems.push({
+    cat: "Recording System",
+    model: nvrModel,
+    qty: 1,
+    unit: nvrPrice,
+    total: nvrPrice
+  });
+
+  // Storage
+  lineItems.push({
+    cat: `Storage (${storageTBNeeded} TB Required @ ${days} Days)`,
+    model: `16TB HDD (${hdd16TB.Model}) x ${hddQty}`,
+    qty: hddQty,
+    unit: hddUnitPrice,
+    total: hddQty * hddUnitPrice
+  });
+
+  // Workstation
+  if (data.customWorkstationCost > 0) {
+    lineItems.push({
+      cat: "Monitoring Workstation",
+      model: "24inch / i5 HP",
+      qty: 1,
+      unit: data.customWorkstationCost,
+      total: data.customWorkstationCost
+    });
+  }
+
+  // UPS
+  lineItems.push({
+    cat: "Power Backup System",
+    model: `${upsRating} (Calculated ${totalWatts}W Load)`,
+    qty: 1,
+    unit: 1500,
+    total: 1500
+  });
+
+  // Civil Work
+  if (data.civilWorkQty > 0) {
+    lineItems.push({
+      cat: "Civil / Infrastructure Works",
+      model: "Site Specific",
+      qty: data.civilWorkQty,
+      unit: data.civilWorkUnit,
+      total: data.civilWorkQty * data.civilWorkUnit
+    });
+  }
+
+  // Display Summary Stats
+  document.getElementById('totalCams').innerText = totalCams;
+  document.getElementById('recNvr').innerText = nvrModel;
+  document.getElementById('recHdd').innerText = `${storageTBNeeded} TB (${hddQty}x 16TB)`;
+  document.getElementById('recUps').innerText = upsRating;
+
+  // Render Table
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  let grandTotal = 0;
+
+  lineItems.forEach(item => {
+    grandTotal += item.total;
+    let tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.cat}</td>
+      <td>${item.model}</td>
+      <td>${item.qty}</td>
+      <td>${item.unit.toLocaleString()}</td>
+      <td>${item.total.toLocaleString()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('grandTotal').innerText = `${grandTotal.toLocaleString()} QAR`;
+  document.getElementById('outputCard').style.display = 'block';
+}
+</script>
+
 </body>
 </html>
