@@ -1,109 +1,356 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flora Security Systems - CCTV Costing Engine</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Mammoth.js for Word Parsing -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- SheetJS for Excel Parsing and Export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flora Group - CCTV BOQ & Survey Estimator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS CDN for Excel Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
-  <div class="max-w-7xl mx-auto space-y-6">
-    
-    <!-- Header -->
-    <header class="border-b border-slate-700 pb-4 flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-amber-500">FLORA SECURITY SYSTEMS W.L.L.</h1>
-        <p class="text-xs text-slate-400">MOI-SSD CCTV Survey & Dynamic Estimator</p>
-      </div>
-      <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full font-mono">QATAR COMPLIANT</span>
-    </header>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-    <!-- Upload & Parameters Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-      <!-- Step 1: Upload Word Survey -->
-      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5">
-        <h2 class="font-semibold text-amber-400 mb-2">1. Upload Survey (.docx)</h2>
-        <input type="file" id="surveyFile" accept=".docx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-amber-400 hover:file:bg-slate-600 cursor-pointer"/>
-        <div id="surveyStatus" class="mt-3 text-xs text-slate-400 font-mono">Status: Awaiting file...</div>
-      </div>
+    <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold text-sky-400">Flora Group - Security Systems Division</h1>
+                <p class="text-sm text-slate-400">SSD MOI Compliant Automated BOQ & Cost Estimator Generator</p>
+            </div>
+            <button onclick="exportToExcel()" class="mt-4 md:mt-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md transition-all flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>Export BOQ Excel</span>
+            </button>
+        </header>
 
-      <!-- Step 2: Upload Excel Price List -->
-      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5">
-        <h2 class="font-semibold text-amber-400 mb-2">2. Upload Price List (.xlsx)</h2>
-        <input type="file" id="priceFile" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-amber-400 hover:file:bg-slate-600 cursor-pointer"/>
-        <div id="priceStatus" class="mt-3 text-xs text-slate-400 font-mono">Status: Awaiting file...</div>
-      </div>
+        <!-- Project, Margin & Conduit Input Control -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                <h2 class="text-lg font-semibold text-amber-400">Project Info</h2>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Subject / Project Title</label>
+                    <input type="text" id="projSubject" value="Al Hamad Garage Building No. 2" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm focus:border-sky-500 focus:outline-none">
+                </div>
+            </div>
 
-      <!-- Step 3: Configure Parameters -->
-      <div class="bg-slate-800 border border-slate-700 rounded-lg p-5 space-y-3">
-        <h2 class="font-semibold text-amber-400">3. Parameters & Selection</h2>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Avg Cable Length / Cam (m)</label>
-          <input type="number" id="avgCableLength" value="100" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1 text-sm text-slate-200 focus:outline-none focus:border-amber-500"/>
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                <h2 class="text-lg font-semibold text-amber-400">Estimation Inputs</h2>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Conduit Length (Meters)</label>
+                    <input type="number" id="conduitMeters" value="0" min="0" placeholder="Open estimation" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-right focus:border-sky-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
+                <h2 class="text-lg font-semibold text-amber-400">Margin Controls</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Materials Markup (%)</label>
+                        <input type="number" id="matMarkup" value="12" step="0.5" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-right focus:border-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Services Markup (%)</label>
+                        <input type="number" id="srvMarkup" value="5" step="0.5" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-right focus:border-sky-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 flex flex-col justify-between">
+                <h2 class="text-lg font-semibold text-amber-400">Costing Summary</h2>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Total Cameras:</span>
+                        <span id="summaryTotalCams" class="font-bold text-sky-400">19</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Total All-in Cost:</span>
+                        <span id="summaryTotalCost" class="font-bold text-slate-200">QAR 0.00</span>
+                    </div>
+                    <div class="flex justify-between text-base border-t border-slate-700 pt-2">
+                        <span class="text-emerald-400 font-semibold">Total Sales Price:</span>
+                        <span id="summaryTotalSales" class="font-bold text-emerald-400">QAR 0.00</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Select Hardware Brand</label>
-          <select id="brandSelect" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
-            <option value="">Upload Price List First...</option>
-          </select>
+
+        <!-- Dynamic BOQ Items Table -->
+        <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+            <div class="p-4 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-semibold text-sky-400">Bill of Quantities (BOQ) Items</h3>
+                <span class="text-xs text-slate-400">Quantities update linked cable & labor estimates automatically</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="bg-slate-900 text-slate-400 text-xs uppercase">
+                        <tr>
+                            <th class="p-3 w-12 text-center">#</th>
+                            <th class="p-3">Product Description</th>
+                            <th class="p-3 w-24">Brand</th>
+                            <th class="p-3 w-36">Model No</th>
+                            <th class="p-3 w-16 text-center">UOM</th>
+                            <th class="p-3 w-20 text-right">Qty</th>
+                            <th class="p-3 w-28 text-right">Cost Price</th>
+                            <th class="p-3 w-28 text-right">Total Cost</th>
+                            <th class="p-3 w-28 text-right">Sell Price</th>
+                            <th class="p-3 w-32 text-right">Total Sales</th>
+                        </tr>
+                    </thead>
+                    <tbody id="boqTableBody" class="divide-y divide-slate-700/50">
+                        <!-- Rendered dynamically -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <button id="btnCalculate" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold py-2 rounded text-sm transition">Generate Costing BOQ</button>
-      </div>
-
     </div>
 
-    <!-- Summary KPI Cards -->
-    <div id="kpiSection" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
-        <span class="text-xs text-slate-400">Total Cameras</span>
-        <div id="kpiCameras" class="text-xl font-bold text-slate-100">0</div>
-      </div>
-      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
-        <span class="text-xs text-slate-400">RAID 5 Storage Required</span>
-        <div id="kpiStorage" class="text-xl font-bold text-amber-400">0 TB</div>
-      </div>
-      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
-        <span class="text-xs text-slate-400">UPS Sizing</span>
-        <div id="kpiUPS" class="text-xl font-bold text-emerald-400">0 kVA</div>
-      </div>
-      <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg">
-        <span class="text-xs text-slate-400">Total Selling Price</span>
-        <div id="kpiTotalSell" class="text-xl font-bold text-blue-400">QAR 0.00</div>
-      </div>
-    </div>
+    <script>
+        let boqData = [
+            // Category A: Cameras
+            { cat: 'A', catTitle: 'Cameras and accessories', isCat: true },
+            { id: 1, type: 'cam', cat: 'A', desc: 'Dome Camera - 2MP WDR LightHunter IR Network Dome Camera', brand: 'UNV', model: 'IPC3232SB- AHDZK-PI-I0', uom: 'EA', qty: 4, cost: 371, isService: false },
+            { id: 2, type: 'cam', cat: 'A', desc: 'Bullet Camera - 2MP HD IR VF Bullet Network Camera', brand: 'UNV', model: 'IPC2322LB- ADZK-G', uom: 'EA', qty: 15, cost: 422, isService: false },
+            
+            // Category B: Headend
+            { cat: 'B', catTitle: 'VMS, NVR & Storage', isCat: true },
+            { id: 3, type: 'item', cat: 'B', desc: '32 Ch Network Video Recorder', brand: 'UNV', model: 'NVR508-32B', uom: 'EA', qty: 1, cost: 1650, isService: false },
+            { id: 4, type: 'item', cat: 'B', desc: '16TB HDD', brand: 'Seagate', model: 'ST16000NM002H', uom: 'EA', qty: 7, cost: 2650, isService: false },
+            
+            // Category C: Switches
+            { cat: 'C', catTitle: 'Network Switches and accessories', isCat: true },
+            { id: 5, type: 'item', cat: 'C', desc: '24 Port POE Switch', brand: 'Hikvision', model: 'TBD', uom: 'EA', qty: 1, cost: 950, isService: false },
+            { id: 6, type: 'item', cat: 'C', desc: '8 Port POE switch with power supply', brand: 'Hikvision', model: 'TBD', uom: 'EA', qty: 1, cost: 650, isService: false },
+            { id: 7, type: 'item', cat: 'C', desc: 'Outdoor Enclosure', brand: 'Netcon', model: 'TBD', uom: 'EA', qty: 1, cost: 750, isService: false },
+            
+            // Category D: Control Room Workstation
+            { cat: 'D', catTitle: 'Workstation and Monitor', isCat: true },
+            { id: 8, type: 'item', cat: 'D', desc: '24" LED FHD Monitor_MOI Approved', brand: 'UNV', model: 'UNV-MW3224-V', uom: 'EA', qty: 1, cost: 320, isService: false },
+            { id: 9, type: 'item', cat: 'D', desc: '32" LED FHD Monitor_MOI Approved', brand: 'UNV', model: 'UNV-MW3232-V-K2', uom: 'EA', qty: 1, cost: 750, isService: false },
+            { id: 10, type: 'item', cat: 'D', desc: 'CCTV Workstation with K/M', brand: 'Dell', model: 'Pro Tower QCT 1250', uom: 'EA', qty: 1, cost: 3000, isService: false },
 
-    <!-- Generated BOQ Table -->
-    <div id="boqSection" class="hidden bg-slate-800 border border-slate-700 rounded-lg p-5">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="font-semibold text-slate-100">Generated Bill of Quantities (BOQ)</h2>
-        <button id="btnExport" class="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-xs text-slate-200 px-3 py-1.5 rounded transition">Export Excel BOQ</button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-900/60 uppercase text-slate-400 border-b border-slate-700">
-            <tr>
-              <th class="p-3">Category</th>
-              <th class="p-3">Description</th>
-              <th class="p-3">Brand / Model</th>
-              <th class="p-3">QTY</th>
-              <th class="p-3">Unit Cost</th>
-              <th class="p-3">Unit Sell (+Margin)</th>
-              <th class="p-3">Total Sell (QAR)</th>
-            </tr>
-          </thead>
-          <tbody id="boqTableBody" class="divide-y divide-slate-700/50"></tbody>
-        </table>
-      </div>
-    </div>
+            // Category J: ACS
+            { cat: 'J', catTitle: 'ACS System', isCat: true },
+            { id: 11, type: 'item', cat: 'J', desc: 'Standalone Access control system', brand: 'Hikvision', model: 'TBD', uom: 'EA', qty: 1, cost: 500, isService: false },
 
-  </div>
+            // Category E: Racks
+            { cat: 'E', catTitle: 'CCTV Racks', isCat: true },
+            { id: 12, type: 'item', cat: 'E', desc: '18U Floor Mount Rack (600X800)', brand: 'Norden', model: '1311-186610BK', uom: 'EA', qty: 1, cost: 1300, isService: false },
 
-  <script src="app.js"></script>
+            // Category F: UPS
+            { cat: 'F', catTitle: 'UPS System', isCat: true },
+            { id: 13, type: 'item', cat: 'F', desc: '2KVA UPS with Battery Pack for 60 Min. Backup', brand: 'Hikvision', model: 'TBD', uom: 'EA', qty: 1, cost: 4000, isService: false },
+
+            // Category G: Cabling & Conduits
+            { cat: 'G', catTitle: 'Cabling and accessories', isCat: true },
+            { id: 14, type: 'auto_cable', cat: 'G', desc: 'Cabling and accessories (Calculated Lot)', brand: 'TBD', model: 'TBD', uom: 'LOT', qty: 1, cost: 0, isService: false },
+            { id: 15, type: 'auto_conduit', cat: 'G', desc: 'Conduits and accessories (Estimation Lot)', brand: 'TBD', model: 'TBD', uom: 'LOT', qty: 1, cost: 0, isService: false },
+
+            // Category H: Engineering & Labor Services
+            { cat: 'H', catTitle: 'Engineering & Services', isCat: true },
+            { id: 16, type: 'auto_labor', cat: 'H', desc: 'Installation, configuration, Testing & Commissioning', brand: 'Flora', model: 'TBD', uom: 'LOT', qty: 1, cost: 0, isService: true }
+        ];
+
+        function calculateBOQ() {
+            const matMarkup = parseFloat(document.getElementById('matMarkup').value) / 100 || 0;
+            const srvMarkup = parseFloat(document.getElementById('srvMarkup').value) / 100 || 0;
+            const conduitMeters = parseFloat(document.getElementById('conduitMeters').value) || 0;
+
+            // 1. Calculate Total Camera Count
+            let totalCams = 0;
+            boqData.forEach(item => {
+                if (item.type === 'cam') {
+                    totalCams += parseFloat(item.qty || 0);
+                }
+            });
+
+            // 2. Cables Breakdown (Auto derived from camera count)
+            const cat6Coils = Math.ceil((totalCams * 100) / 305); 
+            const totalCableCost = (cat6Coils * 460) + (1 * 40) + (totalCams * 9) + (1 * 60) + (1 * 35) + (totalCams * 8) + (3 * 12) + (10 * 20) + 750 + 500 + 500;
+            
+            // 3. Conduits & Services (Driven by manual conduitMeters entry or left open)
+            const pvcPipes = (conduitMeters / 2) / 90;
+            const giPipes = (conduitMeters / 2) / 90;
+            const totalConduitCost = (conduitMeters > 0) ? ((pvcPipes * 280) + (giPipes * 470) + 500 + 200) : 0;
+
+            const totalLaborCost = (totalCams * 150) + (conduitMeters * 1) + (conduitMeters * 1) + (totalCams * 25) + 2500;
+
+            // Update items
+            boqData.forEach(item => {
+                if (item.type === 'auto_cable') item.cost = totalCableCost;
+                if (item.type === 'auto_conduit') item.cost = totalConduitCost;
+                if (item.type === 'auto_labor') item.cost = totalLaborCost;
+            });
+
+            // Render Table & Summaries
+            const tbody = document.getElementById('boqTableBody');
+            tbody.innerHTML = '';
+
+            let grandTotalCost = 0;
+            let grandTotalSales = 0;
+
+            boqData.forEach(item => {
+                if (item.isCat) {
+                    tbody.innerHTML += `
+                        <tr class="bg-slate-800/90 font-bold text-sky-300">
+                            <td class="p-2 border-t border-slate-700">${item.cat}</td>
+                            <td colspan="9" class="p-2 border-t border-slate-700">${item.catTitle}</td>
+                        </tr>`;
+                    return;
+                }
+
+                const markup = item.isService ? srvMarkup : matMarkup;
+                const unitCost = parseFloat(item.cost || 0);
+                const qty = parseFloat(item.qty || 0);
+                const totCost = unitCost * qty;
+                const unitSell = unitCost * (1 + markup);
+                const totSales = totCost * (1 + markup);
+
+                grandTotalCost += totCost;
+                grandTotalSales += totSales;
+
+                const isAuto = item.type.startsWith('auto_');
+                const qtyInputHtml = isAuto 
+                    ? `<span class="text-slate-400 font-mono">${qty}</span>` 
+                    : `<input type="number" min="0" value="${qty}" onchange="updateQty(${item.id}, this.value)" class="w-16 bg-slate-900 border border-slate-700 text-right rounded px-1.5 py-1 text-sm focus:border-sky-500 focus:outline-none">`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-700/30 transition-colors">
+                        <td class="p-3 text-center text-slate-400">${item.id}</td>
+                        <td class="p-3 text-slate-200">${item.desc}</td>
+                        <td class="p-3 text-slate-400">${item.brand}</td>
+                        <td class="p-3 text-slate-400 font-mono text-xs">${item.model}</td>
+                        <td class="p-3 text-center text-slate-400">${item.uom}</td>
+                        <td class="p-3 text-right">${qtyInputHtml}</td>
+                        <td class="p-3 text-right font-mono text-slate-300">${unitCost.toFixed(2)}</td>
+                        <td class="p-3 text-right font-mono text-slate-300">${totCost.toFixed(2)}</td>
+                        <td class="p-3 text-right font-mono text-emerald-300">${unitSell.toFixed(2)}</td>
+                        <td class="p-3 text-right font-mono font-semibold text-emerald-400">${totSales.toFixed(2)}</td>
+                    </tr>`;
+            });
+
+            document.getElementById('summaryTotalCams').innerText = totalCams;
+            document.getElementById('summaryTotalCost').innerText = `QAR ${grandTotalCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('summaryTotalSales').innerText = `QAR ${grandTotalSales.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function updateQty(id, val) {
+            const item = boqData.find(i => i.id === id);
+            if (item) {
+                item.qty = parseFloat(val) || 0;
+                calculateBOQ();
+            }
+        }
+
+        function exportToExcel() {
+            const matMarkup = parseFloat(document.getElementById('matMarkup').value) / 100 || 0;
+            const srvMarkup = parseFloat(document.getElementById('srvMarkup').value) / 100 || 0;
+            const projSubject = document.getElementById('projSubject').value;
+            const conduitMeters = parseFloat(document.getElementById('conduitMeters').value) || 0;
+
+            const wb = XLSX.utils.book_new();
+
+            // 1. Build UNV-BOQ Sheet
+            const boqRows = [
+                ["Costing Summary", "", "", "", "", "Total Cemera", "", "Total Sales (QAR)", "", "", matMarkup, "MATERIALS"],
+                ["", "", "", "", "", "=QTY!I8", "", "=J49", "", "", srvMarkup, "SERVICES"],
+                [],
+                [`SUBJECT : ${projSubject}`],
+                [],
+                ["", "", "", "", "", "", "", "All-in-Cost Price (QAR)", "", "Sell Price (QAR)"],
+                ["No", "Product Description", "Brand", "Model No", "UOM", "Qty", "Unit Price", "Total Price", "Unit Price", "Total Price"]
+            ];
+
+            let rowIdx = 8;
+            boqData.forEach(item => {
+                if (item.isCat) {
+                    boqRows.push([item.cat, item.catTitle]);
+                } else {
+                    const mCell = item.isService ? "$K$3" : "$K$2";
+                    boqRows.push([
+                        item.id,
+                        item.desc,
+                        item.brand,
+                        item.model,
+                        item.uom,
+                        item.qty,
+                        item.cost,
+                        `=G${rowIdx}*H${rowIdx}`,
+                        `=H${rowIdx}*(1+${mCell})`,
+                        `=G${rowIdx}*J${rowIdx}`
+                    ]);
+                }
+                rowIdx++;
+            });
+
+            boqRows.push([], ["", "", "", "", "", "", "Total Cost", `=SUM(I8:I${rowIdx-1})`, "Total Sales", `=SUM(K8:K${rowIdx-1})`]);
+            const wsBOQ = XLSX.utils.aoa_to_sheet(boqRows);
+
+            // 2. Build BREAK DOWN Sheet
+            const totalCams = boqData.filter(i => i.type === 'cam').reduce((a, b) => a + b.qty, 0);
+            const breakdownRows = [
+                [],
+                ["BREAK DOWN DETAILS DO NOT ATTACHED WITH THE FINAL QUOTATION"],
+                ["BREAK DOWN"],
+                ["", "Cables and accessories", "Brand", "Model No", "UOM", "Qty", "Unit Price", "Total Price", "Remarks"],
+                ["", "Cat6 Cable 305M", "TBD", "TBD", "EA", `=CEILING(${totalCams}*100/305, 1)`, 460, "=G5*H5"],
+                ["", "24 Port Patch panel", "TBD", "TBD", "EA", 1, 40, "=G6*H6"],
+                ["", "Rj45 Keystone", "TBD", "TBD", "EA", totalCams, 9, "=G7*H7"],
+                ["", "Rj45 Connector - Packet (50 pcs)", "TBD", "TBD", "EA", 1, 60, "=G8*H8"],
+                ["", "Cable Manager", "TBD", "TBD", "EA", 1, 35, "=G9*H9"],
+                ["", "Patch cord - 1M", "TBD", "TBD", "EA", totalCams, 8, "=G10*H10"],
+                ["", "Patch cord - 3M", "TBD", "TBD", "EA", 3, 12, "=G11*H11"],
+                ["", "CCTV Stickers", "TBD", "TBD", "LOT", 10, 20, "=G12*H12"],
+                ["", "Fiber Cables and accessories", "TBD", "TBD", "LOT", 1, 750, "=G13*H13"],
+                ["", "Sundries and miscellaneous", "TBD", "TBD", "LOT", 1, 500, "=G14*H14"],
+                ["", "", "", "", "", "", "", "=SUM(I5:I14)"],
+                ["", "Electrical cables and accessories"],
+                ["", "Electrical cables", "TBD", "TBD", "EA", 1, 500, "=G17*H17"],
+                ["", "Sundries and miscellaneous", "TBD", "TBD", "EA", 1, 0, "=G18*H18"],
+                ["", "", "", "", "", "", "", "=SUM(I17:I18)", "=I15+I19"],
+                ["", "Conduits and accessories"],
+                ["", "PVC Conduit and accessories", "TBD", "TBD", "EA", (conduitMeters / 2) / 90, 280, "=G21*H21"],
+                ["", "GI Conduit and accessories", "TBD", "TBD", "EA", (conduitMeters / 2) / 90, 470, "=G22*H22"],
+                ["", "Flexible conduit and accessories", "TBD", "TBD", "EA", conduitMeters > 0 ? 1 : 0, 500, "=G23*H23"],
+                ["", "Sundries and miscellaneous", "TBD", "TBD", "LOT", conduitMeters > 0 ? 1 : 0, 200, "=G24*H24"],
+                ["", "", "", "", "", "", "", "=SUM(I21:I24)", "=I25"],
+                [],
+                ["", "Engineering & Services"],
+                ["", "Camera Installation", "TBD", "TBD", "EA", totalCams, 150, "=G28*H28"],
+                ["", "Conduit Installation", "TBD", "TBD", "MTR", conduitMeters, 1, "=G29*H29"],
+                ["", "Cable pulling and installation", "TBD", "TBD", "MTR", conduitMeters, 1, "=G30*H30"],
+                ["", "Cabling Termination, Testing and Labeling", "TBD", "TBD", "EA", totalCams, 25, "=G31*H31"],
+                ["", "Head end Installation & Handover", "TBD", "TBD", "LOT", 1, 2500, "=G32*H32"],
+                ["", "", "", "", "", "", "", "=SUM(I28:I32)", "=I33"]
+            ];
+            const wsBreakdown = XLSX.utils.aoa_to_sheet(breakdownRows);
+
+            // 3. Build QTY Sheet
+            const qtyRows = [
+                [],
+                ["", "", "Dome", "Bullet", "Pole", "PTZ", "K-POI", "Pole", "Total Camera"],
+                ["", "Site Plan", 4, 15, 0, 0, 0, 0, "=SUM(C3:H3)"],
+                [],
+                [],
+                ["", "", 4, 15, 0, 0, 0, 0, "=C3+D3"]
+            ];
+            const wsQTY = XLSX.utils.aoa_to_sheet(qtyRows);
+
+            // Append sheets
+            XLSX.utils.book_append_sheet(wb, wsBOQ, "UNV-BOQ");
+            XLSX.utils.book_append_sheet(wb, wsBreakdown, "BREAK DOWN");
+            XLSX.utils.book_append_sheet(wb, wsQTY, "QTY");
+
+            // Save File
+            XLSX.writeFile(wb, `BOQ_${projSubject.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+        }
+
+        // Initialize on load
+        calculateBOQ();
+    </script>
 </body>
 </html>
