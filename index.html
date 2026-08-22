@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS CDN for Excel Generation -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Mammoth.js CDN for Word Document Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -22,10 +24,21 @@
                 <h1 class="text-2xl font-bold text-sky-400">Flora Group - Security Systems Division</h1>
                 <p class="text-sm text-slate-400">SSD MOI Compliant Automated BOQ & Cost Estimator Generator</p>
             </div>
-            <button onclick="exportToExcel()" class="mt-4 md:mt-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md transition-all flex items-center space-x-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <span>Export BOQ Excel</span>
-            </button>
+            
+            <div class="flex items-center space-x-3 mt-4 md:mt-0">
+                <!-- Word Upload Button -->
+                <label class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2.5 rounded-lg shadow-md transition-all cursor-pointer flex items-center space-x-2 border border-slate-600">
+                    <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span>Upload Word Survey</span>
+                    <input type="file" id="wordFileInput" accept=".docx" onchange="handleWordUpload(event)" class="hidden">
+                </label>
+
+                <!-- Excel Export Button -->
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md transition-all flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span>Export BOQ Excel</span>
+                </button>
+            </div>
         </header>
 
         <!-- Project, Margin & Conduit Input Control -->
@@ -155,12 +168,38 @@
             { id: 16, type: 'auto_labor', cat: 'H', desc: 'Installation, configuration, Testing & Commissioning', brand: 'Flora', model: 'TBD', uom: 'LOT', qty: 1, cost: 0, isService: true }
         ];
 
+        // Word File Processing Function
+        function handleWordUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof mammoth === 'undefined') {
+                alert("Mammoth library is not loaded. Please check your network connection.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                    .then(function(result) {
+                        const text = result.value;
+                        console.log("Uploaded Word Document Text:\n", text);
+                        alert("Word document uploaded and text parsed successfully! Check browser console for full text.");
+                    })
+                    .catch(function(err) {
+                        console.error("Error reading Word file:", err);
+                        alert("Failed to extract content from Word document.");
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         function calculateBOQ() {
             const matMarkup = parseFloat(document.getElementById('matMarkup').value) / 100 || 0;
             const srvMarkup = parseFloat(document.getElementById('srvMarkup').value) / 100 || 0;
             const conduitMeters = parseFloat(document.getElementById('conduitMeters').value) || 0;
 
-            // 1. Calculate Total Camera Count
             let totalCams = 0;
             boqData.forEach(item => {
                 if (item.type === 'cam') {
@@ -168,25 +207,21 @@
                 }
             });
 
-            // 2. Cables Breakdown (Auto derived from camera count)
             const cat6Coils = Math.ceil((totalCams * 100) / 305); 
             const totalCableCost = (cat6Coils * 460) + (1 * 40) + (totalCams * 9) + (1 * 60) + (1 * 35) + (totalCams * 8) + (3 * 12) + (10 * 20) + 750 + 500 + 500;
             
-            // 3. Conduits & Services (Driven by manual conduitMeters entry or left open)
             const pvcPipes = (conduitMeters / 2) / 90;
             const giPipes = (conduitMeters / 2) / 90;
             const totalConduitCost = (conduitMeters > 0) ? ((pvcPipes * 280) + (giPipes * 470) + 500 + 200) : 0;
 
             const totalLaborCost = (totalCams * 150) + (conduitMeters * 1) + (conduitMeters * 1) + (totalCams * 25) + 2500;
 
-            // Update items
             boqData.forEach(item => {
                 if (item.type === 'auto_cable') item.cost = totalCableCost;
                 if (item.type === 'auto_conduit') item.cost = totalConduitCost;
                 if (item.type === 'auto_labor') item.cost = totalLaborCost;
             });
 
-            // Render Table & Summaries
             const tbody = document.getElementById('boqTableBody');
             tbody.innerHTML = '';
 
@@ -254,7 +289,6 @@
 
             const wb = XLSX.utils.book_new();
 
-            // 1. Build UNV-BOQ Sheet
             const boqRows = [
                 ["Costing Summary", "", "", "", "", "Total Cemera", "", "Total Sales (QAR)", "", "", matMarkup, "MATERIALS"],
                 ["", "", "", "", "", "=QTY!I8", "", "=J49", "", "", srvMarkup, "SERVICES"],
@@ -290,7 +324,6 @@
             boqRows.push([], ["", "", "", "", "", "", "Total Cost", `=SUM(I8:I${rowIdx-1})`, "Total Sales", `=SUM(K8:K${rowIdx-1})`]);
             const wsBOQ = XLSX.utils.aoa_to_sheet(boqRows);
 
-            // 2. Build BREAK DOWN Sheet
             const totalCams = boqData.filter(i => i.type === 'cam').reduce((a, b) => a + b.qty, 0);
             const breakdownRows = [
                 [],
@@ -329,7 +362,6 @@
             ];
             const wsBreakdown = XLSX.utils.aoa_to_sheet(breakdownRows);
 
-            // 3. Build QTY Sheet
             const qtyRows = [
                 [],
                 ["", "", "Dome", "Bullet", "Pole", "PTZ", "K-POI", "Pole", "Total Camera"],
@@ -340,12 +372,10 @@
             ];
             const wsQTY = XLSX.utils.aoa_to_sheet(qtyRows);
 
-            // Append sheets
             XLSX.utils.book_append_sheet(wb, wsBOQ, "UNV-BOQ");
             XLSX.utils.book_append_sheet(wb, wsBreakdown, "BREAK DOWN");
             XLSX.utils.book_append_sheet(wb, wsQTY, "QTY");
 
-            // Save File
             XLSX.writeFile(wb, `BOQ_${projSubject.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
         }
 
