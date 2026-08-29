@@ -6,9 +6,9 @@
     <title>Flora Group - CCTV BOQ & Survey Estimator</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS CDN for Excel Generation -->
+    <!-- SheetJS CDN for Excel Upload/Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Mammoth.js CDN for Word Document Parsing -->
+    <!-- Mammoth.js CDN for Word Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
         input[type=number]::-webkit-inner-spin-button, 
@@ -18,14 +18,21 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
     <div class="max-w-7xl mx-auto space-y-6">
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+        <!-- Header Controls -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-sky-400">Flora Group - Security Systems Division</h1>
-                <p class="text-sm text-slate-400">SSD MOI Compliant Automated BOQ & Cost Estimator Generator</p>
+                <p class="text-sm text-slate-400">SSD MOI Dynamic Pricing & Automated BOQ Estimator</p>
             </div>
             
-            <div class="flex items-center space-x-3 mt-4 md:mt-0">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Price List Upload Button -->
+                <label class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2.5 rounded-lg shadow-md transition-all cursor-pointer flex items-center space-x-2 border border-amber-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <span>Upload Price Catalog</span>
+                    <input type="file" id="priceListInput" accept=".xlsx, .xls" onchange="handlePriceListUpload(event)" class="hidden">
+                </label>
+
                 <!-- Word Upload Button -->
                 <label class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2.5 rounded-lg shadow-md transition-all cursor-pointer flex items-center space-x-2 border border-slate-600">
                     <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -41,7 +48,7 @@
             </div>
         </header>
 
-        <!-- Project, Margin & Conduit Input Control -->
+        <!-- Project & Margin Control -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 space-y-4">
                 <h2 class="text-lg font-semibold text-amber-400">Project Info</h2>
@@ -55,7 +62,7 @@
                 <h2 class="text-lg font-semibold text-amber-400">Estimation Inputs</h2>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1">Conduit Length (Meters)</label>
-                    <input type="number" id="conduitMeters" value="0" min="0" placeholder="Open estimation" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-right focus:border-sky-500 focus:outline-none">
+                    <input type="number" id="conduitMeters" value="0" min="0" oninput="calculateBOQ()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-right focus:border-sky-500 focus:outline-none">
                 </div>
             </div>
 
@@ -78,7 +85,7 @@
                 <div class="space-y-1 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-400">Total Cameras:</span>
-                        <span id="summaryTotalCams" class="font-bold text-sky-400">19</span>
+                        <span id="summaryTotalCams" class="font-bold text-sky-400">0</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-400">Total All-in Cost:</span>
@@ -96,7 +103,7 @@
         <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
             <div class="p-4 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center">
                 <h3 class="font-semibold text-sky-400">Bill of Quantities (BOQ) Items</h3>
-                <span class="text-xs text-slate-400">Quantities update linked cable & labor estimates automatically</span>
+                <span class="text-xs text-slate-400">Descriptions, Brands, Models, Quantities, & Costs are fully editable</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left border-collapse">
@@ -104,11 +111,11 @@
                         <tr>
                             <th class="p-3 w-12 text-center">#</th>
                             <th class="p-3">Product Description</th>
-                            <th class="p-3 w-24">Brand</th>
+                            <th class="p-3 w-28">Brand</th>
                             <th class="p-3 w-36">Model No</th>
                             <th class="p-3 w-16 text-center">UOM</th>
                             <th class="p-3 w-20 text-right">Qty</th>
-                            <th class="p-3 w-28 text-right">Cost Price</th>
+                            <th class="p-3 w-24 text-right">Cost Price</th>
                             <th class="p-3 w-28 text-right">Total Cost</th>
                             <th class="p-3 w-28 text-right">Sell Price</th>
                             <th class="p-3 w-32 text-right">Total Sales</th>
